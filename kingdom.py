@@ -114,7 +114,7 @@ class KingdomGUI:
 
             # Spy phase
             for direction in Direction:
-                kingdom_pos = self.kingdom.get_kingdom_position(direction)
+                kingdom_pos = self.kingdom.get_position(direction)
                 for _ in range(3):
                     path = self.kingdom.find_path(self.kingdom.castle_pos, kingdom_pos, self.blocked_positions)
                     if self.move_spy(kingdom_pos, path, direction):
@@ -128,7 +128,7 @@ class KingdomGUI:
             self.update_grid()
 
             for direction in Direction:
-                kingdom_pos = self.kingdom.get_kingdom_position(direction)
+                kingdom_pos = self.kingdom.get_position(direction)
                 path = self.kingdom.find_path(kingdom_pos, self.kingdom.castle_pos, self.blocked_positions)
                 self.move_king(kingdom_pos, path, direction)
 

@@ -65,7 +65,7 @@ class Kingdom:
         self.mines = new_mines
         self._update_grid()
 
-    def get_kingdom_position(self, direction: Direction) -> Tuple[int, int]:
+    def get_position(self, direction: Direction) -> Tuple[int, int]:
         return {
             Direction.NORTH: (0, self.size // 2),
             Direction.SOUTH: (self.size - 1, self.size // 2),

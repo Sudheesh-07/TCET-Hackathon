@@ -1,0 +1,3 @@
+Arin----------------------------------------------------------------------
+
+1] created seperate pages for every class, changed the names of some functions
