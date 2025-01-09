@@ -1,3 +1,9 @@
 Arin----------------------------------------------------------------------
 
 1] created seperate pages for every class, changed the names of some functions
+
+2] made a single page for the whole code will seperate it later, the code works properly there are only few
+changes to be made
+
+
+
