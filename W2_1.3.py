@@ -3,14 +3,13 @@ from typing import Optional, Callable
 from enum import Enum
 import numpy as np
 from heapq import heappush, heappop
-# import time
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 import time
 from typing import Dict, List, Set, Tuple
 import threading
-
-
+from colorama import  Fore
 class Direction(Enum):
     NORTH = 0
     EAST = 1
@@ -25,9 +24,15 @@ class Direction(Enum):
             Direction.WEST: "RED"  # Light yellow
         }[self]
 
-
 class Kingdom:
-    grid = int(input("Enter the size of grid: "))
+    while True:
+        grid = int(input(f"enter number of grid (minimum 7X7) : "))
+        if grid >= 7:
+            break
+        else:
+            print(Fore.RED,"grid size should be atleast 7. Please try again.",Fore.RESET)
+
+    print(Fore.GREEN,"WAIT...LOADING GUI",Fore.RESET)
     def __init__(self, size: int = grid):
         self.size = max(7, size)
         self.castle_pos = (size // 2, size // 2)
@@ -150,7 +155,6 @@ class Kingdom:
             moves = [(0, 1), (1, 0), (0, -1), (-1, 0)]
             if np.random.random() < 0.1:  # 10% chance to include diagonals
                 moves.extend([(1, 1), (1, -1), (-1, 1), (-1, -1)])
-
             np.random.shuffle(moves)
 
             for dx, dy in moves:
@@ -198,7 +202,13 @@ class Kingdom:
         if self.status_callback:
             self.status_callback(direction, "Spy starting entry mission...")
 
-        max_attempts = 5  # Increased number of attempts
+        while True:
+            max_attempts = int(input(f"Enter current king army count (minimum 1 and maximum 10) : "))
+            if 1 <= max_attempts <= 10:
+                break
+            else:
+                print("Army size must be between 1 and 10 , Please try again ")
+
         for attempt in range(max_attempts):
             start_pos = self.get_random_edge_position(direction)
             path = self.find_path(start_pos, self.castle_pos, is_entry=True)
@@ -400,9 +410,10 @@ class KingdomGUI:
         try:
             # Validate mine count
             num_mines = int(self.mine_count.get())
-            max_mines = (self.kingdom.size * self.kingdom.size) // 3
-            if num_mines < 0 or num_mines > max_mines:
-                raise ValueError(f"Invalid number of mines. Please use between 0 and {max_mines}")
+            max_mines = (self.kingdom.size * self.kingdom.size) // 3 #3 for 3 x 3 grid
+            min_mine = max_mines // 2
+            if num_mines == 0 or num_mines > max_mines or num_mines < min_mine:
+                raise ValueError(f"Invalid number of mines. Please use between {min_mine} and {max_mines}")
 
             # Initialize mines and update display
             self.kingdom.initialize_mines(num_mines)
