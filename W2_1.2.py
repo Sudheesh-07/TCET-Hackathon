@@ -19,15 +19,16 @@ class Direction(Enum):
 
     def get_color(self) -> str:
         return {
-            Direction.NORTH: "#87CEEB",  # Light blue
-            Direction.SOUTH: "#98FB98",  # Light green
-            Direction.EAST: "#DDA0DD",  # Light purple
-            Direction.WEST: "RED"  # Light yellow
+            Direction.NORTH: "CYAN",  # Light blue
+            Direction.SOUTH: "GREEN",  # Light green
+            Direction.EAST: "BLUE",  # Light purple
+            Direction.WEST: "PINK"  # Light yellow
         }[self]
 
 
 class Kingdom:
-    def __init__(self, size: int = 7):
+    grid = int(input("enter number of grid: "))
+    def __init__(self, size: int = grid):
         self.size = max(7, size)
         self.castle_pos = (size // 2, size // 2)
         self.mines: Set[Tuple[int, int]] = set()
@@ -106,6 +107,7 @@ class Kingdom:
                         replace=False
                     )
                     self.mines.update(section[i] for i in selected_positions)
+                    print(self.mines)
 
         self._update_grid()
 
@@ -150,7 +152,7 @@ class Kingdom:
             return manhattan + random_factor
 
         path_attempts = 0
-        max_attempts = 3 if is_entry else 1
+        max_attempts = 3 if is_entry else 1   #no of kings army
 
         while pq and path_attempts < max_attempts:
             _, cost, current, path = heappop(pq)
@@ -215,32 +217,6 @@ class Kingdom:
 
         return []
 
-    # def spy_exit_mission(self, direction: Direction) -> Tuple[bool, float]:
-    #     """Execute spy's exit mission to reach the king."""
-    #     if self.status_callback:
-    #         self.status_callback(direction, "Spy starting exit mission...")
-    #
-    #     start_time = time.time()
-    #     king_pos = self.get_edge_center(direction)
-    #
-    #     path = self.find_path(self.castle_pos, king_pos)
-    #     if path:
-    #         for pos in path:
-    #             time.sleep(0.2)
-    #             if pos in self.mines:
-    #                 if self.status_callback:
-    #                     self.status_callback(direction, "Spy hit mine during exit!")
-    #                 return False, time.time() - start_time
-    #             if self.update_callback:
-    #                 self.update_callback(pos, None, direction)
-    #
-    #         self.exit_paths[direction] = path
-    #         return True, time.time() - start_time
-    #
-    #     if self.status_callback:
-    #         self.status_callback(direction, "No exit path found!")
-    #     return False, 0
-
     def spy_exit_mission(self, direction: Direction) -> Tuple[bool, float]:
         """Execute spy's exit mission to reach the king."""
         if self.status_callback:
@@ -273,7 +249,7 @@ class Kingdom:
             self.status_callback(direction, "Spy starting entry mission...")
 
         # Multiple entry attempts with increasing difficulty
-        max_attempts = 3
+        max_attempts = int(input(f"Enter current kings army count:"))
         for attempt in range(max_attempts):
             if attempt > 0:
                 if self.status_callback:
@@ -425,24 +401,27 @@ class KingdomGUI:
         castle_cell.configure(text="🏰", background="yellow")
 
     def update_grid(self, spy_pos=None, king_pos=None, direction=None):
-        """Update the extended grid visualization."""
+
         try:
             # Reset all cells first
             for pos, cell in self.cells.items():
                 i, j = pos
                 is_main_grid = 0 <= i < self.kingdom.size and 0 <= j < self.kingdom.size
 
-                if pos == spy_pos:
-                    cell.configure(text="🕵", background=direction.get_color() if direction else "gray")
-                elif pos == king_pos:
-                    cell.configure(text="👑", background=direction.get_color() if direction else "gray")
+                # Get the direction for this position if it's a king's position
+                pos_direction = next((d for d, p in self.kingdom.king_positions.items() if p == pos), None)
+
+                # Determine cell appearance based on position type
+                if pos == spy_pos and direction:
+                    cell.configure(text="🕵️", background=direction.get_color())
+                elif pos == king_pos and direction:
+                    cell.configure(text="👑", background=direction.get_color())
                 elif pos == self.kingdom.castle_pos:
                     cell.configure(text="🏰", background="yellow")
                 elif is_main_grid and pos in self.kingdom.mines:
                     cell.configure(text="💣", background="red")
-                elif pos in self.kingdom.king_positions.values():
-                    direction = [d for d, p in self.kingdom.king_positions.items() if p == pos][0]
-                    cell.configure(text="👑", background=direction.get_color())
+                elif pos_direction:  # If this is a king's position
+                    cell.configure(text="👑", background=pos_direction.get_color())
                 elif is_main_grid:
                     cell.configure(text=str(self.kingdom.grid[i, j]) if self.kingdom.grid[i, j] > 0 else "·",
                                    background="white")
@@ -535,6 +514,8 @@ class KingdomGUI:
                 else:
                     self.status_vars[direction].set(f"{direction.name}: No safe entry path found")
 
+            self.spy_path()
+
             # Show results
             if successful_kings:
                 winner = min(successful_kings, key=lambda d: self.kingdom.casualties[d])
@@ -569,6 +550,42 @@ class KingdomGUI:
         finally:
             self.simulation_running = False
             self.phase_var.set("Simulation complete")
+
+    def spy_path(self):
+        def format_path(path: List[Tuple[int, int]]) -> str:
+            if not path:
+                return "No path found"
+            return " → ".join([f"({x},{y})" for x, y in path])
+
+        path = []
+        path.append("\n=== Spy Mission Report ===\n")
+
+        for direction in Direction:
+            path.append(f"\n{direction.name} SPY MISSIONS:")
+            path.append("-" * 50)
+
+            path.append("EXIT PATH (Castle → King):")
+            if direction in self.kingdom.exit_paths:
+                exit_path = self.kingdom.exit_paths[direction]
+                path.append(format_path(exit_path))
+                path.append(f"Total steps: {len(exit_path)}")
+            else:
+                path.append("No exit path found")
+
+            path.append("ENTRY PATH (King → Castle):")
+
+            if direction in self.kingdom.entry_paths:
+                entry_path = self.kingdom.entry_paths[direction]
+                path.append(format_path(entry_path))
+                path.append(f"Total steps: {len(entry_path)}")
+            else:
+                path.append("No entry path found")
+
+            path.append("-" * 50)
+
+        full_path = "\n".join(path)
+        messagebox.showinfo("Spy Path Report", full_path)
+
 
     def start_simulation(self):
         """Start the simulation if not already running."""
