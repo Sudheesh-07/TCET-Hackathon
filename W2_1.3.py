@@ -21,7 +21,7 @@ class Direction(Enum):
             Direction.NORTH: "#87CEEB",  # Light blue
             Direction.SOUTH: "#98FB98",  # Light green
             Direction.EAST: "#DDA0DD",  # Light purple
-            Direction.WEST: "RED"  # Light yellow
+            Direction.WEST: "Pink"  # Light yellow
         }[self]
 
 class Kingdom:
@@ -115,6 +115,30 @@ class Kingdom:
                     self.mines.update(section[i] for i in selected_positions)
 
         self._update_grid()
+
+    def find_danger_zones(self) -> Set[Tuple[int, int]]:
+        """Find 3x3 regions with dangerous mine clusters (7-9 mines)."""
+        danger_zones = set()
+
+        # Iterate through all possible 3x3 regions
+        for i in range(self.size - 2):
+            for j in range(self.size - 2):
+                mine_count = 0
+                positions = set()
+
+                # Check each position in the 3x3 grid
+                for di in range(3):
+                    for dj in range(3):
+                        pos = (i + di, j + dj)
+                        if pos in self.mines:
+                            mine_count += 1
+                            positions.add(pos)
+
+                # If dangerous cluster found (7-9 mines), add all positions
+                if mine_count >= 6:
+                    danger_zones.update(positions)
+
+        return danger_zones
 
     def _update_grid(self) -> None:
         """Update grid with mine proximity information."""
@@ -249,6 +273,7 @@ class Kingdom:
         path = self.entry_paths[direction]
         step_time = 0.5
         total_time = 0
+        danger_zones = self.find_danger_zones()
 
         if self.status_callback:
             self.status_callback(direction, "King following entry path...")
@@ -261,8 +286,16 @@ class Kingdom:
             total_time += step_time
             time.sleep(step_time)
 
+            if pos in danger_zones:
+                # 60% chance of catastrophic failure in danger zone
+                if np.random.random() < 0.6:
+                    if self.status_callback:
+                        self.status_callback(direction,
+                                             "⚠️ Entered high-risk zone! All forces lost in chain explosion!")
+                    self.casualties[direction] = float('inf')  # Represent total loss
+                    return False
             # Random casualty,20% chance of casualties at each step
-            if np.random.random() < 0.2:
+            elif np.random.random() < 0.2:
                 # Random number of casualties (1-3)
                 new_casualties = np.random.randint(1, 4)
                 self.casualties[direction] += new_casualties
@@ -368,6 +401,7 @@ class KingdomGUI:
     def update_grid(self, spy_pos=None, king_pos=None, direction=None):
 
         try:
+            danger_zones = self.kingdom.find_danger_zones()
             # Reset all cells first
             for pos, cell in self.cells.items():
                 i, j = pos
@@ -384,8 +418,12 @@ class KingdomGUI:
                 elif pos == self.kingdom.castle_pos:
                     cell.configure(text="🏰", background="yellow")
                 elif is_main_grid and pos in self.kingdom.mines:
-                    cell.configure(text="💣", background="red")
-                elif pos_direction:  # If this is a king's position
+                    # Check if the mine is part of a danger zone
+                    if pos in danger_zones:
+                        cell.configure(text="💣", background="yellow")  # Danger zone mines
+                    else:
+                        cell.configure(text="💣", background="red")  # Regular mines
+                elif pos_direction:
                     cell.configure(text="👑", background=pos_direction.get_color())
                 elif is_main_grid:
                     cell.configure(text=str(self.kingdom.grid[i, j]) if self.kingdom.grid[i, j] > 0 else "·",
@@ -529,7 +567,7 @@ class KingdomGUI:
         finally:
             self.simulation_running = False
             self.phase_var.set("Simulation complete")
-            print((self.kingdom.casualties))
+            print(self.kingdom.casualties)
             print(type(self.kingdom.casualties))
 
     def spy_path(self):
@@ -553,12 +591,13 @@ class KingdomGUI:
             else:
                 path.append("No exit path found")
 
-            path.append("ENTRY PATH (King → Castle):")
+            path.append("\nENTRY PATH (King → Castle):")
 
             if direction in self.kingdom.entry_paths:
                 entry_path = self.kingdom.entry_paths[direction]
                 path.append(format_path(entry_path))
                 path.append(f"Total steps: {len(entry_path)}")
+                path.append(f"Casualties : {self.kingdom.casualties[direction]}")
             else:
                 path.append("No entry path found")
 
